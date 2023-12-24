@@ -4,7 +4,7 @@ function widget:GetInfo()
     desc      = "Keep Transporters going to transport units to its target Shortcut Select unit shift+t(default Keycode 116) and move unit to call transport",
     author    = "Ramthis",
     date      = "Sep 17, 2023",
-	version   = "1.9.1", --ALPHA
+	version   = "1.9.2", --ALPHA
     license   = "GNU GPL, v3 or later",
     layer     = 0,
     enabled   = true,  --  loaded by default?
@@ -15,9 +15,9 @@ end
 --TO DO
 --Dropzone 
 --CMdid checken weil wenn ich den command ziehe dann muss es id sein  first und last command
--- Moveroute und Retreatmentpoint wenn Units noch zu transportieren sind Mögliche Lösung der Transporter nimmt die umgekehrte Route von der zukünftigen Einheit  so das der Transporter und Unit auf der Route treffen 
+-- Moveroute und Retreatmentpoint wenn Units noch zu transportieren sind MÃ¶gliche LÃ¶sung der Transporter nimmt die umgekehrte Route von der zukÃ¼nftigen Einheit  so das der Transporter und Unit auf der Route treffen 
 -- Guard Units funktioniert nicht mehr 
--- wenn der transporter zu nah an der Fab ist bekommt die Fab nicht alle comands übertragen an die Unit weswegen der Transporter nicht der route folgen kann
+-- wenn der transporter zu nah an der Fab ist bekommt die Fab nicht alle comands Ã¼bertragen an die Unit weswegen der Transporter nicht der route folgen kann
 --t2 trans unload Problem
 
 KeycodeTransport=116 --Keypress event 116=t
@@ -41,7 +41,7 @@ Ignorelist ={"armpw","armflea","armflash","armfav","armbanth","armraz","armmar",
 NoFab={"armfhp","corfhp","armamsub","coramsub","armplat","corplat","armasy","corasy","armsy","corsy","armshltxuw","corgantuw"}-- This are no Fabs because the Trans uses random Fabs as Retreatmentpoint and a Trans should not move to this Fabs
 TransportAllFactories=false -- if false 
 
-Debugmode=false
+Debugmode=true
 DebugCategories={}
 
 transport_states={
@@ -189,7 +189,7 @@ function Transporter:CanTransportUnit(Unit)
 	local TempCapacity=self.CurrentCapacity
 	local TempTransportMass=self.CurrentTransportMass
 	if TempCapacity<self.Capacity then
-		--für T1
+		--fÃ¼r T1
 		if self.Capacity==1 then
 		
 			if self.TransportMass>=Unit.Mass then
@@ -197,7 +197,7 @@ function Transporter:CanTransportUnit(Unit)
 					canTransport=true
 			end
 
-		--für T2
+		--fÃ¼r T2
 		elseif self.Capacity>1 then
 
 				Log(Unit.Mass)
@@ -429,7 +429,7 @@ function Transporter:Unload(Counter)
 	self.state=transport_states.arrived
 	Counter=Counter+1
 	local factor= 70
-	-- -1 stuck mode nehme den nächsten Punkt
+	-- -1 stuck mode nehme den nÃ¤chsten Punkt
 	if table.getn(self.units)>0 then
 	local x=0
 	if self.units[1].targetpoint~=nil then
@@ -639,7 +639,7 @@ function Transporter:MoveToTarget()
 			local TX,TY,TZ= self:GetNextTargetPoint(X,Y,Z)
 			if table.getn(self.MoveRoute)>0 then
 				
-				-- Übertragen der Commands
+				-- Ãœbertragen der Commands
 			
 				local j=1
 				while j<=table.getn(self.MoveRoute) do
@@ -1002,7 +1002,7 @@ function GetNeareastTransporter(Unit,Modus)
 		Log("Check Transport"..i)
 		if Transporters[i].state==transport_states.idle or Transporters[i].state==transport_states.move_to_retreatpoint or Transporters[i].state==transport_states.approaching  then 
 			
-			--Transporter überwacht eine Fab
+			--Transporter Ã¼berwacht eine Fab
 			Log("Transport Guard "..Transporters[i].GuardFab)
 			if Transporters[i].GuardFab~=-1 then
 				--Ist die Unit aus dieser Fab
@@ -1019,7 +1019,7 @@ function GetNeareastTransporter(Unit,Modus)
 				end
 		    end
 			
-			-- Wenn eine Unit einen anderen Targetpoint hat als der Transporter der den Schwellwert 600 überschreitet wird ignoriert.
+			-- Wenn eine Unit einen anderen Targetpoint hat als der Transporter der den Schwellwert 600 Ã¼berschreitet wird ignoriert.
 			Log("Transporters[i].Capacity "..Transporters[i].Capacity)
 			if Transporters[i].Capacity>1 then
 				Log("table.getn(Transporters[i].units) "..table.getn(Transporters[i].units))
@@ -1177,9 +1177,10 @@ function CheckTransporterDistance()
 							--Log("Isbuilder "..tostring(IsBuilder(Transporters[i].units[j].unitid)))
 							--if IsBuilder(Transporters[i].units[j].unitid)==true then
 								if IsPause(Transporters[i].units[j].unitid)==false then
+									Log("WAIT")
 									Spring.GiveOrderToUnit(Transporters[i].units[j].unitid,CMD.WAIT ,0,0 )--Load Unit
 								end
-								Log("WAIT")
+								
 							--else
 								--Spring.GiveOrderToUnit(Transporters[i].units[j].unitid,CMD.STOP, {},{""})
 							--end
@@ -1241,7 +1242,7 @@ function CheckGuardedTransport()
 					GuardedUnits[i]:GetTargetExpectationTime()
 					Log("GuardedUnits[i].TimeToTarget"..GuardedUnits[i].TimeToTarget)
 					if GuardedUnits[i].TimeToTarget>MinTimeToTarget then
-						Spring.GiveOrderToUnit(GuardedUnits[i].unitid,CMD.WAIT ,{},{} )--Load Unit
+						Spring.GiveOrderToUnit(GuardedUnits[i].unitid,CMD.WAIT ,0,0 )--Load Unit
 						Log("WAIT")
 						GuardTransports[Transindex]:LoadUnits()
 					end
@@ -1267,7 +1268,7 @@ function CheckOnlyLoads()
 		while i<= table.getn(Units)do
 			if Units[i].OnlyLoad==true then
 				local Transindex=0
-				Transindex=GetNeareastTransporter(Units[i],2)-- welcher Transporter is am nächsten für diese Unit
+				Transindex=GetNeareastTransporter(Units[i],2)-- welcher Transporter is am nÃ¤chsten fÃ¼r diese Unit
 				Transporters[Transindex]:AddUnit(Units[i])
 				Transporters[Transindex].OnlyLoad=true
 				RemoveUnit(Units[i].unitid)
@@ -1316,7 +1317,7 @@ function CheckTransports()
 							Units[i]:GetTargetExpectationTime()
 							Log("TimeToTarget"..tostring(Units[i].TimeToTarget))
 							if Units[i].TimeToTarget>MinTimeToTarget then
-								Transindex=GetNeareastTransporter(Units[i],0)-- welcher Transporter is am nächsten für diese Unit
+								Transindex=GetNeareastTransporter(Units[i],0)-- welcher Transporter is am nÃ¤chsten fÃ¼r diese Unit
 								Log("Transindex"..Transindex)
 						
 								if Transindex~=-1 then 
@@ -1539,19 +1540,20 @@ end
 function UnPause(unitID)
 	
     local commands = Spring.GetUnitCommands(unitID, -1)
-	
+	local Find=false
 	if commands~=nil then
 		local CMDCounts= table.getn(commands)
 		Log("Commandscount"..CMDCounts )
-		 for i=1,#commands do
+		for i=1,#commands do
 
 			if commands[i].id==CMD.WAIT then
-				Spring.GiveOrderToUnit(unitID, CMD.WAIT, 0, 0)
-				break
-
+				Find=true
 			end
-		
 		end
+	end
+	if Find==true then
+		Log("Unwait")
+		Spring.GiveOrderToUnit(unitID, CMD.WAIT, {},{})
 	end
 	
 end
@@ -1642,7 +1644,7 @@ end
 
 --#################################### Widget Function ################################################
 
---manchmal geht er einfach zum retreatpoint und dann zu der Einheit die schon lange draussen ist dadurch verlängert sich die Strecke
+--manchmal geht er einfach zum retreatpoint und dann zu der Einheit die schon lange draussen ist dadurch verlÃ¤ngert sich die Strecke
 
 
 function widget:UnitLoaded(unitID, unitDefID, unitTeam, transportID, transportTeam)
@@ -1718,7 +1720,6 @@ function widget:UnitUnloaded(unitID, unitDefID, unitTeam, transportID, transport
 			end
 		end
 	end
-	UnPause(unitID)
 	
 	
 
@@ -1760,6 +1761,14 @@ function widget:UnitUnloaded(unitID, unitDefID, unitTeam, transportID, transport
 			
 		
 	end
+	Log("Is Pause"..tostring( IsPause(unitID)))
+	if IsPause(unitID) ==true then
+		UnPause(unitID)
+		UnPause(unitID)
+	end
+	Log("Is Pause"..tostring( IsPause(unitID)))
+
+	
 end
 
 
@@ -1889,7 +1898,7 @@ function widget:UnitCommand(unitID, unitDefID, unitTeam, cmdID, cmdParams, cmdOp
 
 	if cmdID==CMD.GUARD then
 		if IsTransporter(unitID)==true then
-			--Pärchen bilden 1-1 Beziehung Transporter und Unit
+			--PÃ¤rchen bilden 1-1 Beziehung Transporter und Unit
 			local UnitDEFS=UnitDefs[Spring.GetUnitDefID(cmdParams[1])]
 
 			if IsFab(cmdParams[1])==true then
@@ -1908,7 +1917,7 @@ function widget:UnitCommand(unitID, unitDefID, unitTeam, cmdID, cmdParams, cmdOp
 				GuardUnitIndex=FindGuardUnit(cmdParams[1])
 				GuardTransIndex=FindGuardTransport(unitID)
 
-				-- Pärchen verbinden
+				-- PÃ¤rchen verbinden
 				if GuardUnitIndex>-1 and GuardUnitIndex>-1 then
 					Log("Guard accepted Transport "..unitID.."Unit "..cmdParams[1])
 					GuardTransports[GuardTransIndex].Guard=GuardedUnits[GuardUnitIndex].unitid
@@ -1949,7 +1958,7 @@ function widget:UnitCommand(unitID, unitDefID, unitTeam, cmdID, cmdParams, cmdOp
 					for i = 1, #Transporters do
 						local TransIndex= Transporters[i]:IndexOfUnit(unitID)
 						if TransIndex~=-1 then
-						--löschen aus beiden Listen
+						--lÃ¶schen aus beiden Listen
 							Log("Removed Unit".. unitID)
 							Transporters[i]:RemoveUnit(unitID)
 
@@ -2033,7 +2042,7 @@ function widget:KeyPress(key, mods, isRepeat)
 	
 							for j=1,#CMDCount do
 								Log("Remove Command")
-								Spring.GiveOrderToUnit(unitid, CMD.REMOVE, {CMDCount[j].tag}, {})-- das funktioniert nicht zuverlässing
+								Spring.GiveOrderToUnit(unitid, CMD.REMOVE, {CMDCount[j].tag}, {})-- das funktioniert nicht zuverlÃ¤ssing
 							end
 						
 					end
@@ -2049,7 +2058,7 @@ function widget:KeyPress(key, mods, isRepeat)
 	
 							for j=1,#CMDCount do
 								Log("Remove Command")
-								Spring.GiveOrderToUnit(unitid, CMD.REMOVE, {CMDCount[j].tag}, {})-- das funktioniert nicht zuverlässing
+								Spring.GiveOrderToUnit(unitid, CMD.REMOVE, {CMDCount[j].tag}, {})-- das funktioniert nicht zuverlÃ¤ssing
 							end
 						end
 					end
@@ -2065,7 +2074,7 @@ function widget:KeyPress(key, mods, isRepeat)
 				if UnitIndex==-1 then
 					local NewUnit=Unit:new(unitid)
 					
-					local Transindex=GetNeareastTransporter(NewUnit,1)-- welcher Transporter is am nächsten für diese Unit
+					local Transindex=GetNeareastTransporter(NewUnit,1)-- welcher Transporter is am nÃ¤chsten fÃ¼r diese Unit
 
 					if Transindex>-1 then 
 						local Transid=Transporters[Transindex].unitid
@@ -2075,11 +2084,11 @@ function widget:KeyPress(key, mods, isRepeat)
 					end
 						
 				else
-					local CMDCount= Spring.GetUnitCommands(GuardedUnits[UnitIndex].GuardUnit,-1)	--Transporter alle Commands löschen
+					local CMDCount= Spring.GetUnitCommands(GuardedUnits[UnitIndex].GuardUnit,-1)	--Transporter alle Commands lÃ¶schen
 	
 					for j=1,#CMDCount do
 						Log("Remove Command")
-						Spring.GiveOrderToUnit(GuardedUnits[UnitIndex].GuardUnit, CMD.REMOVE, {CMDCount[j].tag}, {})-- das funktioniert nicht zuverlässing
+						Spring.GiveOrderToUnit(GuardedUnits[UnitIndex].GuardUnit, CMD.REMOVE, {CMDCount[j].tag}, {})-- das funktioniert nicht zuverlÃ¤ssing
 					end
 					RemoveGuardTransporter(GuardedUnits[UnitIndex].GuardUnit)
 						
