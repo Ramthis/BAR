@@ -41,7 +41,7 @@ Ignorelist ={"armpw","armflea","armflash","armfav","armbanth","armraz","armmar",
 NoFab={"armfhp","corfhp","armamsub","coramsub","armplat","corplat","armasy","corasy","armsy","corsy","armshltxuw","corgantuw"}-- This are no Fabs because the Trans uses random Fabs as Retreatmentpoint and a Trans should not move to this Fabs
 TransportAllFactories=false -- if false 
 
-Debugmode=true
+Debugmode=false
 DebugCategories={}
 
 transport_states={
