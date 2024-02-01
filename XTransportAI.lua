@@ -40,6 +40,7 @@ teamId ={}
 Ignorelist ={"armpw","armflea","armflash","armfav","armbanth","armraz","armmar","armvang","armlun","armthor","corak","corgator","corshiva","corseal","corkarg","corjugg","corcat","corsok","corkorg"}--Unit Ignorlist this units will be ignored
 NoFab={"armfhp","corfhp","armamsub","coramsub","armplat","corplat","armasy","corasy","armsy","corsy","armshltxuw","corgantuw"}-- This are no Fabs because the Trans uses random Fabs as Retreatmentpoint and a Trans should not move to this Fabs
 TransportAllFactories=false -- if false 
+UnitsToUnpause={}
 
 Debugmode=false
 DebugCategories={}
@@ -120,7 +121,20 @@ function UnPauseUnits()
 			end
 		end
 	end
-	
+
+	local j=1
+	while j<table.getn(UnitsToUnpause) do
+		if UnitsToUnpause[j]~=nil then
+			if IsPause(UnitsToUnpause[j]) ==true then
+				Spring.GiveOrderToUnit(UnitsToUnpause[j], CMD.WAIT, 0,0)
+				
+			else
+				table.remove(UnitsToUnpause,j)
+				j=j-1
+			end
+		end
+		j=j+1
+	end
 
 end
 
@@ -1553,7 +1567,8 @@ function UnPause(unitID)
 	end
 	if Find==true then
 		Log("Unwait")
-		Spring.GiveOrderToUnit(unitID, CMD.WAIT, {},{})
+		Spring.GiveOrderToUnit(unitID, CMD.WAIT, 0,0)
+		table.insert(UnitsToUnpause,unitID)
 	end
 	
 end
@@ -1761,12 +1776,12 @@ function widget:UnitUnloaded(unitID, unitDefID, unitTeam, transportID, transport
 			
 		
 	end
-	Log("Is Pause"..tostring( IsPause(unitID)))
-	if IsPause(unitID) ==true then
+	--Log("Is Pause"..tostring( IsPause(unitID)))
+	--if IsPause(unitID) ==true then
 		UnPause(unitID)
-		UnPause(unitID)
-	end
-	Log("Is Pause"..tostring( IsPause(unitID)))
+		--UnPause(unitID)
+	--end
+	--Log("Is Pause"..tostring( IsPause(unitID)))
 
 	
 end
@@ -1822,6 +1837,7 @@ function widget:UnitCmdDone(unit_id, unitDefID, unitTeam, cmdID, cmdTag)
 			end
 		end
 	end
+
 
 	if cmdID==CMD.MOVE then
 				
