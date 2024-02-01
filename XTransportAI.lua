@@ -126,8 +126,10 @@ function UnPauseUnits()
 	while j<table.getn(UnitsToUnpause) do
 		if UnitsToUnpause[j]~=nil then
 			if IsPause(UnitsToUnpause[j]) ==true then
-				Spring.GiveOrderToUnit(UnitsToUnpause[j], CMD.WAIT, 0,0)
-				
+			local Trans= Spring.GetUnitTransporter(UnitsToUnpause[j]) 
+				if Trans==nil then
+					Spring.GiveOrderToUnit(UnitsToUnpause[j], CMD.WAIT, 0,0)
+				end
 			else
 				table.remove(UnitsToUnpause,j)
 				j=j-1
@@ -1265,13 +1267,11 @@ function CheckGuardedTransport()
 		--[[else
 			
 			if IsBuilding==nil then
-				if IsPause==false then
-					--LoadCommands(GuardedUnits[i].unitid)
-				else
-					--UnPause(GuardedUnits[i].unitid)
-
+				if IsPause==true then
+					UnPause(GuardedUnits[i].unitid)
 				end
-			end--]]
+				LoadCommands(GuardedUnits[i].unitid)
+			end]]--
 		end
 	end
 end
@@ -1609,10 +1609,10 @@ function CopyMoveCommandsInArray(unitID,Array)
 end
 
 
---[[function LoadCommands(unit_id)
+function LoadCommands(unit_id)
 
 		local UnitIndex=FindIndex(unit_id,GuardedUnits)
-		
+		Log("Hallo hier villeic")
 		local Trans= Spring.GetUnitTransporter(unit_id) 
 		if Trans==nil then
 			if UnitIndex>0 then
@@ -1620,7 +1620,7 @@ end
 				if IsBuilder(unit_id)==true then
 					local Unit=GuardedUnits[UnitIndex]
 					local j=1
-
+					Log("SavedCommands Count"..table.getn(Unit.SavedCommands))
 					if table.getn(Unit.SavedCommands)>0 then
 						Log("SavedCommands"..table.getn(Unit.SavedCommands))	
 						while j<=table.getn(Unit.SavedCommands) do
@@ -1629,8 +1629,8 @@ end
 							Spring.GiveOrderToUnit(Unit.unitid, Unit.SavedCommands[j].id, Unit.SavedCommands[j].params, Unit.SavedCommands[j].options)
 							j=j+1
 						end
-						--Unit.SavedCommands={}
-						--UnPause(Unit.unitid)
+						Unit.SavedCommands={}
+						UnPause(Unit.unitid)
 					
 					end
 				else
@@ -1640,7 +1640,7 @@ end
 			end
 		end
 		
-end]]--
+end
 
 function CopyAllCommandsInArray(unitID,Array)
 	local CMDCount= Spring.GetUnitCommands(unitID,-1)	
@@ -1648,9 +1648,9 @@ function CopyAllCommandsInArray(unitID,Array)
 	
 	if table.getn(Array)==0 then
 		for j=1,#CMDCount do
-			if CMDCount[j].id ~= CMD.WAIT then
+			--if CMDCount[j].id ~= CMD.WAIT then
 				table.insert(Array,CMDCount[j])
-			end
+			--end
 		end	
 	Log("After Copy Commands"..table.getn(Array))
 	end
@@ -1731,7 +1731,8 @@ function widget:UnitUnloaded(unitID, unitDefID, unitTeam, transportID, transport
 			if  TransIndex>-1 then
 				Transport=Transporters[TransIndex]
 				Guarded=false
-				Spring.GiveOrderToUnit(unitID,CMD.STOP, {},{""})
+				UnPause(unitID)
+				--Spring.GiveOrderToUnit(unitID,CMD.STOP, {},{""})
 			end
 		end
 	end
