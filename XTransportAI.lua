@@ -4,7 +4,7 @@ function widget:GetInfo()
     desc      = "Keep Transporters going to transport units to its target Shortcut Select unit shift+t(default Keycode 116) and move unit to call transport",
     author    = "Ramthis",
     date      = "Sep 17, 2023",
-	version   = "1.9.2", --ALPHA
+	version   = "1.9.3", --ALPHA
     license   = "GNU GPL, v3 or later",
     layer     = 0,
     enabled   = true,  --  loaded by default?
@@ -161,7 +161,8 @@ Transporter={unitid=0,
 	MoveRoute={},
 	RetreatRoute={},
 	StuckCount=0,
-	OnlyLoad=false
+	OnlyLoad=false,
+	Emergency=false
 
 }
 
@@ -187,6 +188,7 @@ function Transporter:new(unitid,state)
 	  o.StuckCount=0
 	  o.Targetpoint={}
 	  o.OnlyLoad=false
+	  o.Emergency=false
 
 	  Log(" unitid "..unitid.." Capacity "..o.Capacity.." TransportMass"..o.TransportMass)
 	  return o
@@ -440,6 +442,17 @@ end
 
 
 
+function Transporter:EmergencyUnload()
+	local XP,YP,ZP=Spring.GetUnitPosition(self.unitid)
+	local factor=40
+	self.Emergency=true
+	for i=1,#self.units do
+		factor=factor*i
+		Spring.GiveOrderToUnit(self.unitid,CMD.UNLOAD_UNIT,{XP+factor,YP,ZP,self.units[i].unitid},{"shift,right"})--Move to Target 
+	end
+
+	
+end
 
 function Transporter:Unload(Counter)
 	self.state=transport_states.arrived
@@ -552,7 +565,7 @@ function Transporter:RemoveUnit(unitID)
 			self.CurrentTransportMass=0
 			self.CurrentCapacity=0
 			self.state=transport_states.unloaded
-			if self.OnlyLoad==false then
+			if self.OnlyLoad==false and self.Emergency==false then
 				if self.Guard==-1 then
 					Log("Go to Retreatmentpoint")
 					self:MoveToRetreatPoint()
@@ -1217,6 +1230,42 @@ function CheckTransporterDistance()
 	end
 end
 
+function GetTargetpointFromGuardedUnit(unitid)
+	local Targetpoint=nil	
+	
+	local GuardedUnitCommands = GetAllCommands(unitid)
+	Log("GetTargetpointFromGuardedUnit "..tostring(unitid).." Commandcount"..table.getn(GuardedUnitCommands))
+
+		local k=1
+		while k <=table.getn(GuardedUnitCommands) do
+			--local command= GuardedUnitCommands[k]
+			--if command.id<0 then
+				--local x, y, z =command.params--Position des ersten Commands Spring.GetUnitPosition(commands[1].params[1])
+			
+				--break
+			--end
+			Log("Unitid "..unitid.." Command Guard "..tostring(GuardedUnitCommands[k].id).." Param "..tostring(GuardedUnitCommands[k].params[1]))
+			if GuardedUnitCommands[k].id==CMD.GUARD  then
+			   Targetpoint=GetTargetpointFromGuardedUnit(GuardedUnitCommands[k].params[1])
+			   break
+			elseif GuardedUnitCommands[k].id==CMD.REPAIR then
+				local x, y, z=  Spring.GetUnitPosition(GuardedUnitCommands[k].params[1])
+				Targetpoint={x,y,z}
+				Log("Targetpoint Repair"..tostring(x).." " ..y.." "..z)
+				break
+			elseif GuardedUnitCommands[k].id==CMD.MOVE  or GuardedUnitCommands[k].id<0 then
+				
+				Log("Targetpoint"..tostring(GuardedUnitCommands[k].params[1]))
+				Log("Targetpoint"..tostring(GuardedUnitCommands[k].params[2]))
+				Log("Targetpoint"..tostring(GuardedUnitCommands[k].params[3]))
+				Targetpoint=GuardedUnitCommands[k].params
+				break
+
+			end
+			k=k+1
+		end
+	return Targetpoint
+end
 
 function CheckGuardedTransport()
 	Log("GuardedUnits in Queue "..table.getn(GuardedUnits))
@@ -1236,22 +1285,26 @@ function CheckGuardedTransport()
 
 		if Velocity~=0 then
 			Log("Commands".. table.getn(commands))
-			if table.getn(commands)>0 then
+			--if table.getn(commands)>0 then
 				local Transid=GuardedUnits[i].GuardUnit
 				Log("Transid "..Transid)
 				local Transindex= FindGuardTransport(Transid)
 				Log("Transindex "..Transindex)
 				Log("Unitscount".. table.getn(GuardTransports[Transindex].units))
-				Log("Targetpoint"..tostring(table.getn(commands[1].params)))
+				--Log("Targetpoint"..tostring(table.getn(commands[1].params)))
 				local Targetpoint=nil
 
-				if table.getn(commands[1].params)>2 then
-					Targetpoint=commands[1].params
-				elseif table.getn(commands[1].params)==1 then
-					local x, y, z =Spring.GetUnitPosition(commands[1].params[1])
-					Targetpoint={x, y, z}
+				--if table.getn(commands[1].params)>2 then--Position
+				--	Targetpoint=commands[1].params
+				--elseif table.getn(commands[1].params)==1 then--Einheit
+				Targetpoint= GetTargetpointFromGuardedUnit(GuardedUnits[i].unitid)
+					
+
+					
+
+					
 					Log("Commandernumber "..tostring(Targetpoint))
-				end
+				--end
 
 				if Targetpoint~=nil then
 					GuardedUnits[i]:SetTargetpoint(Targetpoint)
@@ -1263,7 +1316,7 @@ function CheckGuardedTransport()
 						GuardTransports[Transindex]:LoadUnits()
 					end
 				end
-			end
+			--end
 		--[[else
 			
 			if IsBuilding==nil then
@@ -1383,17 +1436,19 @@ function CheckTransports()
 				--Check all Transports
 				while j<=table.getn(Transporters) do
 					local Transport =Transporters[j]
-					local Passengers=Spring.GetUnitIsTransporting(Transport.unitid)
-					if Passengers~=nil then
-						if table.getn(Passengers)>0 then
-							Log("(Passengers" ..table.getn(Passengers))
-							local Commands=GetAllCommands(Transport.unitid)
-							if table.getn(Commands)==0 then
-								Log("Transport stuck" .. table.getn(Transport.units))
-								if Transport.StuckCount<20 then
-									Transport:Unload(1)
+					if Transport.Emergency==false then
+						local Passengers=Spring.GetUnitIsTransporting(Transport.unitid)
+						if Passengers~=nil then
+							if table.getn(Passengers)>0 then
+								Log("(Passengers" ..table.getn(Passengers))
+								local Commands=GetAllCommands(Transport.unitid)
+								if table.getn(Commands)==0 then
+									Log("Transport stuck" .. table.getn(Transport.units))
+									if Transport.StuckCount<20 then
+										Transport:Unload(1)
+									end
+									Transport.StuckCount=Transport.StuckCount+1
 								end
-								Transport.StuckCount=Transport.StuckCount+1
 							end
 						end
 					end
@@ -1513,6 +1568,23 @@ function CheckFabTransporter(Fabid)
 	return Index
 end
 
+
+function SearchCommand(unitID,command)
+	
+    local commands = Spring.GetUnitCommands(unitID, -1)
+	local ReturnCommand=nil
+	for i=1,#commands do
+		if commands[i].id==command then
+			--local CMDCounts= table.getn(commands)
+			--Log("Commandscount"..CMDCounts )
+			--if CMDCounts>0 then
+				ReturnCommand= commands[i]
+		
+			--end
+		end
+	end
+	return ReturnCommand
+end
 
 function FirstCommand(unitID)
 	
@@ -1758,12 +1830,14 @@ function widget:UnitUnloaded(unitID, unitDefID, unitTeam, transportID, transport
 			end
 			Log("table.getn(Transport.units)"..table.getn(Transport.units))
 			if table.getn(Transport.units)>0 then
-				Transport:MoveToTarget()
-				if Guarded==false then
-					Transport:Sleep(0.5)
+				if Transport.Emergency==false then
+					Transport:MoveToTarget()
+					if Guarded==false then
+						Transport:Sleep(0.5)
+					end
 				end
 			else
-				
+				Transport.Emergency=false
 				Transport.OnlyLoad=false
 				Transport:Idle()
 				Log("Transport.OnlyLoad"..tostring(Transport.OnlyLoad))
@@ -2007,6 +2081,28 @@ function widget:KeyPress(key, mods, isRepeat)
 					RemoveFab(unitid)
 				else
 					AddFab(unitid)
+				end
+			 end
+			 if IsTransporter(unitid)==true then
+				local Passengers=Spring.GetUnitIsTransporting(unitid)
+				
+
+				if Passengers~=nil then
+					local GuardIndex=FindGuardTransport(unitid)
+					local Transindex=FindTransport(unitid)
+					 
+					 local Transporter=nil
+					 if GuardIndex~=-1 then
+						Transporter=GuardTransports[GuardIndex]
+					 end
+
+					 if Transindex~=-1 then
+						Transporter=Transporters[Transindex]
+					 end
+
+					 if Transporter~=nil then
+					 Transporter:EmergencyUnload()
+					 end
 				end
 			 end
 
