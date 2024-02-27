@@ -4,7 +4,7 @@ function widget:GetInfo()
     desc      = "Keep Transporters going to transport units to its target Shortcut Select unit shift+t(default Keycode 116) and move unit to call transport",
     author    = "Ramthis",
     date      = "Sep 17, 2023",
-	version   = "1.9.3", --ALPHA
+	version   = "1.9.4", --ALPHA
     license   = "GNU GPL, v3 or later",
     layer     = 0,
     enabled   = true,  --  loaded by default?
@@ -44,6 +44,7 @@ UnitsToUnpause={}
 
 Debugmode=false
 DebugCategories={}
+local updateSelection = false
 
 transport_states={
 	idle=0,
@@ -87,6 +88,7 @@ function widget:Initialize()
   
 	PlayerId = Spring.GetMyPlayerID()
 	_,_,_,teamId = Spring.GetPlayerInfo(PlayerId)
+	Log("teamId"..teamId.."PlayerId"..PlayerId)
 	if TransportAllFactories==true then
 		GetAllFabs()
 	end
@@ -96,8 +98,10 @@ end
 
 function widget:Update()
 	local currentTime = Spring.GetGameSeconds()	
-		UnPauseUnits()
+		
+		UpdateSelection()
 		if Lastcheck<currentTime then
+			UnPauseUnits()
 			CheckOnlyLoads()
 			CheckGuardedTransport()
 			CheckTransports()
@@ -823,10 +827,13 @@ end
 
 function AddTransporter(unitID)
 	local TransIndex=FindTransport(unitID)
+	Log("Add Trans: "..unitID)
+	Log("TransIndex: " ..TransIndex)
 	if TransIndex==-1 then
-
+		Log("Transporter added")
 		local transporter=Transporter:new (unitID,transport_states.idle)
 		table.insert(Transporters,transporter) 
+		Log("TransporterCount ".. table.getn(Transporters))
 		ShowTransportValue()
 	end
 	
@@ -889,6 +896,7 @@ end
 function AddGuardTransporter(unitID)
 	local TransIndex=FindGuardTransport(unitID)
 	RemoveTransporter(unitID)
+	Log("AddGuardTransporter")
 	if TransIndex==-1 then
 		local transporter=Transporter:new (unitID,transport_states.idle)
 		table.insert(GuardTransports,transporter) 
@@ -899,8 +907,9 @@ end
 function AddGuardUnit(unitID)
 	local UnitIndex=FindGuardUnit(unitID)
 	RemoveUnit(unitID)
+	Log("Add GuardUnit")
 	if UnitIndex==-1 then
-		Log("Add GuardUnit")
+		
 		local Unit=Unit:new (unitID)
 		table.insert(GuardedUnits,Unit) 
 	end
@@ -963,6 +972,7 @@ function RemoveTransporter(unitID)
 	local TransIndex= FindTransport(unitID)
 	if TransIndex>-1 then
 		table.remove(Transporters,TransIndex)
+		Log("Remove Transporter" .. unitID)
 	end
 	ShowTransportValue()
 end
@@ -980,7 +990,7 @@ end
 
 function DestroyUnit(unitID)
 		local UnitIndex= FindUnit(unitID)
-
+		Log("Destroy Unit ".. unitID)
 		if UnitIndex>-1 then
 			table.remove(Units,UnitIndex)
 			
@@ -1339,6 +1349,7 @@ function CheckOnlyLoads()
 				Transporters[Transindex]:AddUnit(Units[i])
 				Transporters[Transindex].OnlyLoad=true
 				RemoveUnit(Units[i].unitid)
+				Log("CheckonlyLoads")
 				Transporters[Transindex]:LoadUnits()
 			end
 			i=i+1
@@ -1357,6 +1368,8 @@ function CheckTransports()
 		local Transport=false
 		Log("Fabs in Queue "..table.getn(Factories))
 		Log("Units in Queue "..table.getn(Units))
+		Log("Transporter "..table.getn(Transporters))
+		
 				local Transindex=0
 				local i=1
 				Log("Unitscounts"..table.getn(Units))
@@ -1803,8 +1816,8 @@ function widget:UnitUnloaded(unitID, unitDefID, unitTeam, transportID, transport
 			if  TransIndex>-1 then
 				Transport=Transporters[TransIndex]
 				Guarded=false
-				UnPause(unitID)
-				--Spring.GiveOrderToUnit(unitID,CMD.STOP, {},{""})
+				--UnPause(unitID)
+				Spring.GiveOrderToUnit(unitID,CMD.STOP, {},{""})
 			end
 		end
 	end
@@ -1862,20 +1875,7 @@ function widget:UnitUnloaded(unitID, unitDefID, unitTeam, transportID, transport
 end
 
 
-function widget:UnitGiven(unitID, unitDefID, newTeam, oldTeam)
-	Log("Given")--schmiert hier ab
-	if IsTransporter(unitID)==true then
-		RemoveTransporter(unitID)
-		DestroyGuardTransporter(unitID)
 
-	elseif IsFab(unitID)==true then
-		RemoveFab(unitID)
-
-	else
-		RemoveUnit(unitID)
-		RemoveGuardUnit(unitID)
-	end
-end
 
 
 function widget:UnitCmdDone(unit_id, unitDefID, unitTeam, cmdID, cmdTag)	
@@ -2192,6 +2192,7 @@ function widget:KeyPress(key, mods, isRepeat)
 					if Transindex>-1 then 
 						local Transid=Transporters[Transindex].unitid
 						RemoveTransporter(Transid)
+						Log("Test")
 						Spring.GiveOrderToUnit(Transid,CMD.GUARD ,unitid,{"left"} )--Load Unit
 							
 					end
@@ -2214,39 +2215,66 @@ function widget:KeyPress(key, mods, isRepeat)
 	
 
 end
+function widget:UnitGiven(unitID, unitDefID, newTeam, oldTeam)
+	
+	local TeamID= Spring.GetUnitTeam(unitID)
+	Log("MyTeamid"..teamId)
+	Log("TemID ".. Spring.GetUnitTeam(unitID))
+	if TeamID ~=teamId then
+	Log("Given")--schmiert hier ab
+		if IsTransporter(unitID)==true then
+			RemoveTransporter(unitID)
+			DestroyGuardTransporter(unitID)
 
+		elseif IsFab(unitID)==true then
+			RemoveFab(unitID)
+
+		else
+			RemoveUnit(unitID)
+			RemoveGuardUnit(unitID)
+		end
+	end
+end
 
 function widget:UnitTaken(unitID, unitDefID, newTeam, oldTeam)
-	Log("Taken")-- schmiert hier ab  
-	if IsTransporter(unitID)==true then
-		AddTransporter(unitID)
+	Log("Taken")-- schmiert hier ab 
+	local TeamID= Spring.GetUnitTeam(unitID)
+	Log("MyTeamid"..teamId)
+	Log("TemID ".. Spring.GetUnitTeam(unitID))
+	if TeamID ~=teamId then
+		if IsTransporter(unitID)==true then
+			AddTransporter(unitID)
 
-	elseif IsFab(unitID) ==true then
-		AddFab(unitID)
+		elseif IsFab(unitID) ==true then
+			AddFab(unitID)
+		end
 	end
 end
 
 function widget:DrawWorld()
+	gl.PushMatrix()
+	gl.Rotate(90, 1, 0, 0)
     for i=1, #Units do
+		
         local x, y, z = Spring.GetUnitPosition(Units[i].unitid)
-		gl.PushMatrix()
+		
+		--gl.Translate(x,y,z)
+		
 		gl.Color(1, 0, 0, 1)
-		--gl.Texture("T")
-		gl.Translate(x,y,z)
-		gl.Billboard()			
-		gl.TexRect(0, 20, 10, 30)
-		gl.PopMatrix()
+		--gl.Rect(x,z,x+50,z+50)
+		gl.Text("T",x+30,z,14,"cd")
+		
     end
 	for i=1, #Factories do
         local x, y, z = Spring.GetUnitPosition(Factories[i])
-		gl.PushMatrix()
+		
+		--gl.Translate(x,y,z)
 		gl.Color(1, 0, 0, 1)
-		--gl.Texture("T")
-		gl.Translate(x,y,z)
-		gl.Billboard()			
-		gl.TexRect(0, 20, 10, 30)
-		gl.PopMatrix()
+		--gl.Rect(x,z,x+50,z+50)
+		gl.Text("T",x+30,z,14,"cd")
+		
     end
+	gl.PopMatrix()
 
 end
 
@@ -2270,21 +2298,27 @@ end]]--
 
 function widget:UnitDestroyed(unitID, unitDefID, unitTeam, attackerID, attackerDefID, attackerTeam)
 	Log("BOOM ".. unitID)
-	if IsTransporter(unitID)==true then
-		RemoveTransporter(unitID)
-		DestroyGuardTransporter(unitID)
+	local TeamID= Spring.GetUnitTeam(unitID)
+	Log("MyTeamid"..teamId)
+	Log("TemID ".. Spring.GetUnitTeam(unitID))
 
-	elseif IsFab(unitID)==true then
-		RemoveFab(unitID)
+	if TeamID ==teamId then
+		if IsTransporter(unitID)==true then
+			RemoveTransporter(unitID)
+			DestroyGuardTransporter(unitID)
 
-	else
-		DestroyUnit(unitID)
-		RemoveGuardUnit(unitID)
+		elseif IsFab(unitID)==true then
+			RemoveFab(unitID)
+
+		else
+			DestroyUnit(unitID)
+			RemoveGuardUnit(unitID)
+		end
 	end
 end 
 
 
-function widget:UnitFinished(unitID, unitDefID, teamID, builderID)
+function widget:UnitFinished(unitID, unitDefID, teamId, builderID)
 	local UnitDEFS= UnitDefs[unitDefID]
 	local TeamID= Spring.GetUnitTeam(unitID)
 	local X,Y,Z=Spring.GetUnitPosition(unitID)
@@ -2306,32 +2340,44 @@ function widget:UnitFinished(unitID, unitDefID, teamID, builderID)
 		end
 	end
 end
+function UpdateSelection()
+	if updateSelection == true then
+		
+		selection=Spring.GetSelectedUnits()
+		local tempselection= {}
+	
 
-function widget:SelectionChanged(selection)
-	local tempselection={}
+		if table.getn(selection)>1 then
 
-	if table.getn(selection)>1 then
-
-		for i=1,#selection  do
-			if selection[i]~=nil then
+			for i=1,#selection  do
+				if selection[i]~=nil then
 				
-				local Istransporter=IsTransporter(selection[i])
-				if Istransporter~=nil then
-				if Istransporter==false then
-					table.insert(tempselection, selection[i])
-					Log("Transport in Selection ".. i)
-				end
+					local Istransporter=IsTransporter(selection[i])
+
+					if Istransporter~=nil then
+						if Istransporter==false then
+							table.insert(tempselection, selection[i])
+							Log("Unit ".. selection[i].. " Index".. i)
+						end
+					end
 				end
 			end
-		end
 
 		
 
-	if table.getn(tempselection)>0 then
-			Log("New Selection "..table.getn(tempselection))
-			Spring.SelectUnitArray(tempselection)
+			if table.getn(tempselection)>0 then
+				Log("New Selection "..table.getn(tempselection))
+				Spring.SelectUnitArray(tempselection)
+				
+			end
 		end
+		updateSelection=false
 	end
+end 
+
+function widget:SelectionChanged(selection)
+	updateSelection = true
+	
  
 
 	
